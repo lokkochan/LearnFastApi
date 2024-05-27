@@ -1,7 +1,22 @@
-from fastapi import FastAPI, Path
+from fastapi import FastAPI, Path, Depends, HTTPException, status
+from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from typing import Optional
-from pydantic import BaseModel
+from datetime import datetime, timedelta
+from jose import JWTError, jwt
+from passlib.context import CryptContext
+from dotenv import load_dotenv
+import os
 
+SECRET_KEY = os.getenv("SECRET_KEY")
+ALGORITHM = os.getenv("HASH_ALGORITHM")
+TOKEN_EXPIRE_TIME = 30
+
+
+from models import User, UpdateUser
+from Fake_DB import users
+
+pwd_context = CryptContext(schemes=["bcrypt"], depreacted="auto")
+auth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
 # Create an instance of FastAPI, this contains attributes and methods to define the API later
 app = FastAPI() 
 
@@ -10,20 +25,7 @@ Create an endpoint for the root URL. Endpoint is a function that is called when 
 For example, amazon.com/delete-user, delete-user is the endpoint, amazon.com is the root URL
 That help to specify the service that the client wants to use
 '''
-users = {
-    1: {
-        "username": "johndoe",
-        "email": "johndoe@learning.com"
-    },
-    2: {
-        "username": "ChatGPT",
-        "email": "asALanguageModel@AI.com"
-    },
-    3: {
-        "username": "Copilot",
-        "email": "anotherAI@AI.com"
-    }
-}
+
 # Core HTTP methods: GET (get info), POST (create info), PUT (update info), DELETE (delete info)
 @app.get("/") # Decorator that tells FastAPI that this function is an endpoint
 def index():    # Function that will be called when the endpoint is accessed
@@ -61,12 +63,6 @@ def get_user(user_id: int, username: Optional[str] = None): # Optional parameter
         return {"Data": "Not found"}
     return users[user_id]
 
-# Request body: Data sent by the client to the server
-# Use Pydantic models to define the structure of the request body
-class User(BaseModel):
-    username: str
-    email: str
-
 # POST request
 # URL example: /create-user
 @app.post("/create-user/{user_id}")
@@ -75,10 +71,6 @@ def create_user(user_id: int, user: User):
         return {"Error": "User already exists"}
     users[user_id] = user
     return  users[user_id] 
-
-class UpdateUser(BaseModel):
-    username: Optional[str] = None
-    email: Optional[str] = None
 
 # PUT request
 # URL example: /update-user/1
