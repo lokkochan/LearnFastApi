@@ -1,22 +1,14 @@
 from fastapi import FastAPI, Path, Depends, HTTPException, status
-from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from typing import Optional
-from datetime import datetime, timedelta
 from jose import JWTError, jwt
-from passlib.context import CryptContext
 from dotenv import load_dotenv
+import auth
 import os
-
-SECRET_KEY = os.getenv("SECRET_KEY")
-ALGORITHM = os.getenv("HASH_ALGORITHM")
-TOKEN_EXPIRE_TIME = 30
-
 
 from models import User, UpdateUser
 from Fake_DB import users
 
-pwd_context = CryptContext(schemes=["bcrypt"], depreacted="auto")
-auth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
+
 # Create an instance of FastAPI, this contains attributes and methods to define the API later
 app = FastAPI() 
 
