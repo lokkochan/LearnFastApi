@@ -1,14 +1,16 @@
+from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from passlib.context import CryptContext
 from jose import JWTError, jwt
 from datetime import datetime, timedelta
 
-from models import UserInDB
+from models import UserInDB, TokenData
 from const import SECRET_KEY, ALGORITHM
+from Fake_DB import users
 
 
 pwd_context = CryptContext(schemes=["bcrypt"], depreacted="auto")
-auth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
 
 
 def verify_password(plain_password, hashed_password):
@@ -38,3 +40,16 @@ def create_access_token(data: dict, secret_key: str, algorithm: str, expires_del
     to_encode.update({"exp": expire})
     encoded_jwt = jwt.encode(to_encode, SECRET_KEY, ALGORITHM)
     return encoded_jwt
+
+async def get_current_user(token: str = Depends(oauth2_scheme)): # parse out the token from the request by to the tokenUrl
+    credential_exception = HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Could not validate credentials", headers={"WWW-Authenticate": "Bearer"})
+    try:
+        payload = jwt.decode(token, SECRET_KEY, ALGORITHM)
+        username: str = payload.get("sub")
+        if username is None:
+            raise credential_exception
+        token_data = TokenData(username=username)
+    except JWTError:
+        raise credential_exception
+    
+    user = get_user(users, username=token_data.username)
