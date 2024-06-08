@@ -1,13 +1,13 @@
 from fastapi import FastAPI, Path, Depends, HTTPException, status
+from fastapi.security import OAuth2PasswordRequestForm
 from typing import Optional
-from jose import JWTError, jwt
 from dotenv import load_dotenv
 import auth
-import os
+from datetime import timedelta
 
-from models import User, UpdateUser
+from models import User, UpdateUser, Token
 from Fake_DB import users
-
+from const import TOKEN_EXPIRE_TIME
 
 # Create an instance of FastAPI, this contains attributes and methods to define the API later
 app = FastAPI() 
@@ -85,3 +85,22 @@ def delete_user(user_id: int):
         return {"Error": "User does not exist"}
     del users[user_id]
     return {"Message": "User deleted"}
+
+
+@app.post("/token", response_model=Token) # Token root
+async def login_for_access_token(from_data: OAuth2PasswordRequestForm = Depends()):
+    user= auth.authenticate_user(users, from_data.username, from_data.password)
+    if not user:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Incorrect username or password", headers={"WWW-Authenticate": "Bearer"})
+    access_token_expires = timedelta(minutes=TOKEN_EXPIRE_TIME)
+    access_token = auth.create_access_token(data={"sub": user.username}, expires_delta=access_token_expires)
+    return {"access_token": access_token, "token_type": "bearer"}
+
+@app.get("/users/self/", response_model=User)
+async def read_users_self(current_user: User = Depends(auth.get_current_active_user)):
+    return current_user
+
+@app.get("/users/self/items")
+async def read_self_item(current_user: User = Depends(auth.get_current_active_user)):
+    return [{"item_id": 1, "owner": current_user}] 
+
